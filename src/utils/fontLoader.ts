@@ -87,6 +87,18 @@ export function isFontLoaded(): boolean {
 }
 
 /**
+ * 检查字体是否真正可用（通过渲染测试）
+ */
+export function isFontReallyLoaded(): boolean {
+  if (!fontLoaded) return false;
+  try {
+    return document.fonts.check('700 16px "Noto Sans SC"', '0123456789');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 获取中文字体族字符串
  */
 export const CHINESE_FONT_FAMILY = '"Noto Sans SC", "Microsoft YaHei", "PingFang SC", "SimHei", "Heiti SC", "WenQuanYi Micro Hei", Arial, sans-serif';

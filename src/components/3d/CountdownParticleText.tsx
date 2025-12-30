@@ -13,23 +13,190 @@ interface CountdownParticleTextProps {
   scale?: number;
 }
 
+// 点阵字体数据（5x7 像素）- 数字 0-9 和常用符号
+const BITMAP_FONT: Record<string, number[][]> = {
+  '0': [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,1,1],
+    [1,0,1,0,1],
+    [1,1,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  '1': [
+    [0,0,1,0,0],
+    [0,1,1,0,0],
+    [0,0,1,0,0],
+    [0,0,1,0,0],
+    [0,0,1,0,0],
+    [0,0,1,0,0],
+    [0,1,1,1,0],
+  ],
+  '2': [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [0,0,0,0,1],
+    [0,0,1,1,0],
+    [0,1,0,0,0],
+    [1,0,0,0,0],
+    [1,1,1,1,1],
+  ],
+  '3': [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [0,0,0,0,1],
+    [0,0,1,1,0],
+    [0,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  '4': [
+    [0,0,0,1,0],
+    [0,0,1,1,0],
+    [0,1,0,1,0],
+    [1,0,0,1,0],
+    [1,1,1,1,1],
+    [0,0,0,1,0],
+    [0,0,0,1,0],
+  ],
+  '5': [
+    [1,1,1,1,1],
+    [1,0,0,0,0],
+    [1,1,1,1,0],
+    [0,0,0,0,1],
+    [0,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  '6': [
+    [0,1,1,1,0],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  '7': [
+    [1,1,1,1,1],
+    [0,0,0,0,1],
+    [0,0,0,1,0],
+    [0,0,1,0,0],
+    [0,1,0,0,0],
+    [0,1,0,0,0],
+    [0,1,0,0,0],
+  ],
+  '8': [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  '9': [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,1],
+    [0,0,0,0,1],
+    [0,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  ':': [
+    [0,0,0,0,0],
+    [0,0,1,0,0],
+    [0,0,1,0,0],
+    [0,0,0,0,0],
+    [0,0,1,0,0],
+    [0,0,1,0,0],
+    [0,0,0,0,0],
+  ],
+  ' ': [
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+    [0,0,0,0,0],
+  ],
+};
+
 // 缓存已计算的字符粒子位置
 const charPositionCache = new Map<string, Float32Array>();
 
 /**
- * 获取单个字符的粒子位置（带缓存）
+ * 使用点阵字体生成粒子位置
  */
-function getCharParticlePositions(char: string, particlesPerChar: number): Float32Array {
-  const cacheKey = `${char}_${particlesPerChar}`;
+function getBitmapCharPositions(char: string, particlesPerChar: number): Float32Array {
+  const bitmap = BITMAP_FONT[char];
+  if (!bitmap) {
+    // 未知字符，返回随机分布
+    const positions = new Float32Array(particlesPerChar * 3);
+    for (let i = 0; i < particlesPerChar; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 0.5;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 0.7;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+    }
+    return positions;
+  }
+  
+  // 收集所有亮点
+  const pixels: [number, number][] = [];
+  for (let y = 0; y < bitmap.length; y++) {
+    for (let x = 0; x < bitmap[y].length; x++) {
+      if (bitmap[y][x] === 1) {
+        pixels.push([x, y]);
+      }
+    }
+  }
+  
+  if (pixels.length === 0) {
+    const positions = new Float32Array(particlesPerChar * 3);
+    return positions;
+  }
+  
+  const positions = new Float32Array(particlesPerChar * 3);
+  const scaleX = 1.5 / 5;  // 5 像素宽
+  const scaleY = 1.5 / 7;  // 7 像素高
+  
+  for (let i = 0; i < particlesPerChar; i++) {
+    const [px, py] = pixels[Math.floor(Math.random() * pixels.length)];
+    positions[i * 3] = (px - 2) * scaleX + (Math.random() - 0.5) * 0.08;
+    positions[i * 3 + 1] = -(py - 3) * scaleY + (Math.random() - 0.5) * 0.08;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+  }
+  
+  return positions;
+}
+
+/**
+ * 获取单个字符的粒子位置（带缓存）
+ * 优先使用 Canvas 字体渲染，失败时使用点阵备用
+ */
+function getCharParticlePositions(char: string, particlesPerChar: number, useBitmap: boolean = false): Float32Array {
+  const cacheKey = `${char}_${particlesPerChar}_${useBitmap ? 'bitmap' : 'font'}`;
   if (charPositionCache.has(cacheKey)) {
     return charPositionCache.get(cacheKey)!;
+  }
+  
+  // 如果强制使用点阵或字符是数字/符号，优先尝试点阵
+  if (useBitmap || /^[0-9: ]$/.test(char)) {
+    if (BITMAP_FONT[char]) {
+      const positions = getBitmapCharPositions(char, particlesPerChar);
+      charPositionCache.set(cacheKey, positions);
+      return positions;
+    }
   }
   
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   
   if (!ctx) {
-    return createFallbackCharPositions(particlesPerChar);
+    return getBitmapCharPositions(char, particlesPerChar);
   }
   
   const canvasSize = 128;
@@ -62,7 +229,13 @@ function getCharParticlePositions(char: string, particlesPerChar: number): Float
     }
   }
   
+  // 如果字体渲染失败（像素太少），使用点阵备用
   if (whitePixels.length < 10) {
+    if (BITMAP_FONT[char]) {
+      const positions = getBitmapCharPositions(char, particlesPerChar);
+      charPositionCache.set(cacheKey, positions);
+      return positions;
+    }
     // 空格或特殊字符
     const positions = new Float32Array(particlesPerChar * 3);
     for (let i = 0; i < particlesPerChar; i++) {
@@ -88,7 +261,7 @@ function getCharParticlePositions(char: string, particlesPerChar: number): Float
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
   const maxDim = Math.max(maxX - minX, maxY - minY);
-  const scaleVal = 1.5 / maxDim; // 增大字符尺寸
+  const scaleVal = 1.5 / maxDim;
   
   const positions = new Float32Array(particlesPerChar * 3);
   
@@ -102,16 +275,6 @@ function getCharParticlePositions(char: string, particlesPerChar: number): Float
   }
   
   charPositionCache.set(cacheKey, positions);
-  return positions;
-}
-
-function createFallbackCharPositions(particlesPerChar: number): Float32Array {
-  const positions = new Float32Array(particlesPerChar * 3);
-  for (let i = 0; i < particlesPerChar; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 0.5;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 0.8;
-    positions[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
-  }
   return positions;
 }
 
