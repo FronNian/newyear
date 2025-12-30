@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0f0f1a"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="50%" style="stop-color:#FFA500"/>
+      <stop offset="100%" style="stop-color:#FF8C00"/>
+    </linearGradient>
+    <linearGradient id="starGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFE066"/>
+      <stop offset="100%" style="stop-color:#FFD700"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 背景圆 -->
+  <circle cx="50" cy="50" r="48" fill="url(#bgGrad)" stroke="#FFD700" stroke-width="2"/>
+  
+  <!-- 星星装饰 -->
+  <g fill="#FFD700" opacity="0.6">
+    <circle cx="20" cy="25" r="1.5"/>
+    <circle cx="80" cy="20" r="1"/>
+    <circle cx="15" cy="70" r="1"/>
+    <circle cx="85" cy="75" r="1.5"/>
+    <circle cx="75" cy="40" r="1"/>
+    <circle cx="25" cy="45" r="1"/>
+  </g>
+  
+  <!-- 2026 文字 -->
+  <text x="50" y="42" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="22" font-weight="bold" fill="url(#goldGrad)" filter="url(#glow)">2026</text>
+  
+  <!-- 倒计时图标 - 时钟 -->
+  <g transform="translate(50, 68)">
+    <!-- 时钟外圈 -->
+    <circle cx="0" cy="0" r="16" fill="none" stroke="url(#goldGrad)" stroke-width="2.5"/>
+    <!-- 时钟刻度 -->
+    <g stroke="#FFD700" stroke-width="1.5">
+      <line x1="0" y1="-12" x2="0" y2="-10"/>
+      <line x1="10.4" y1="-6" x2="8.7" y2="-5"/>
+      <line x1="10.4" y1="6" x2="8.7" y2="5"/>
+      <line x1="0" y1="12" x2="0" y2="10"/>
+      <line x1="-10.4" y1="6" x2="-8.7" y2="5"/>
+      <line x1="-10.4" y1="-6" x2="-8.7" y2="-5"/>
+    </g>
+    <!-- 时针 -->
+    <line x1="0" y1="0" x2="0" y2="-7" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+    <!-- 分针 -->
+    <line x1="0" y1="0" x2="6" y2="-6" stroke="#FFA500" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- 中心点 -->
+    <circle cx="0" cy="0" r="2" fill="#FFD700"/>
+  </g>
+  
+  <!-- 顶部星星 -->
+  <polygon points="50,8 52,14 58,14 53,18 55,24 50,20 45,24 47,18 42,14 48,14" fill="url(#starGrad)" filter="url(#glow)"/>
+</svg>

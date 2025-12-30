@@ -1,0 +1,22 @@
+{
+  "name": "2026 跨年倒计时",
+  "short_name": "跨年倒计时",
+  "description": "3D 交互式跨年倒计时 Web 应用",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#165B33",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
