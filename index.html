@@ -10,9 +10,11 @@
     <meta name="theme-color" content="#FFD700" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <!-- 预加载关键资源 -->
-    <link rel="preload" href="/fonts/NotoSansSC-Bold.ttf" as="font" type="font/ttf" crossorigin />
     <title>2026 跨年倒计时</title>
+    <!-- 预加载关键字体资源 -->
+    <link rel="preload" href="./fonts/NotoSansSC-Bold.ttf" as="font" type="font/ttf" crossorigin="anonymous" />
+    <!-- 预取第一首歌（空闲时加载） -->
+    <link rel="prefetch" href="./music/倒数 - G.E.M. 邓紫棋.mp3" as="audio" />
   </head>
   <body>
     <div id="root"></div>
