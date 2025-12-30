@@ -41,6 +41,7 @@ import {
   DEFAULT_VISUALIZER_SETTINGS,
   DEFAULT_PHOTO_WALL_SETTINGS,
 } from '@/types';
+import * as photoStorage from '@/services/photoStorageService';
 
 // ============================================
 // Store 状态接口
@@ -243,26 +244,37 @@ export const useAppStore = create<AppState>()(
         if (photos.some((p) => p.id === photo.id)) {
           return false;
         }
-        set({ photos: [...photos, photo] });
+        const newPhotos = [...photos, photo];
+        set({ photos: newPhotos });
+        // 异步保存到 IndexedDB
+        photoStorage.savePhotos(newPhotos);
         return true;
       },
       
       removePhoto: (id) => {
-        set((state) => ({
-          photos: state.photos.filter((p) => p.id !== id),
-        }));
+        set((state) => {
+          const newPhotos = state.photos.filter((p) => p.id !== id);
+          // 异步保存到 IndexedDB
+          photoStorage.savePhotos(newPhotos);
+          return { photos: newPhotos };
+        });
       },
       
       updatePhotoPosition: (id, position) => {
-        set((state) => ({
-          photos: state.photos.map((p) =>
+        set((state) => {
+          const newPhotos = state.photos.map((p) =>
             p.id === id ? { ...p, position } : p
-          ),
-        }));
+          );
+          // 异步保存到 IndexedDB
+          photoStorage.savePhotos(newPhotos);
+          return { photos: newPhotos };
+        });
       },
       
       clearPhotos: () => {
         set({ photos: [] });
+        // 异步清空 IndexedDB
+        photoStorage.clearPhotos();
       },
       
       // ========== 音乐 ==========
@@ -791,7 +803,7 @@ export const useAppStore = create<AppState>()(
       name: 'nye-countdown-storage',
       partialize: (state) => ({
         settings: state.settings,
-        photos: state.photos,
+        // photos 不再存储在 localStorage，改用 IndexedDB
         decorSettings: state.decorSettings,
         fireworkConfig: state.fireworkConfig,
         onboardingState: state.onboardingState,
@@ -815,7 +827,8 @@ export const useAppStore = create<AppState>()(
             ...DEFAULT_SETTINGS,
             ...(persisted.settings || {}),
           },
-          photos: persisted.photos || [],
+          // photos 从 IndexedDB 加载，这里保持空数组
+          photos: [],
           decorSettings: {
             ...DEFAULT_DECOR_SETTINGS,
             ...(persisted.decorSettings || {}),
