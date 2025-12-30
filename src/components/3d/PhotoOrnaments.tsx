@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect, memo } from 'react';
+import { useRef, useMemo, useEffect, memo, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -125,17 +125,44 @@ const SelectedPhoto = memo(({
   texture, 
   aspectRatio,
   photoScale,
-  onDeselect 
+  onDeselect,
+  initialPosition,
+  initialScale,
+  initialRotation,
+  groupRotationY,
+  isReturning,
+  returnTargetPosition,
+  returnTargetScale,
+  returnTargetRotation,
+  returnGroupRotationY,
+  onReturnComplete,
+  onStateUpdate
 }: { 
   texture: THREE.Texture;
   aspectRatio: number;
   photoScale: number;
   onDeselect: () => void;
+  initialPosition: THREE.Vector3;
+  initialScale: number;
+  initialRotation: THREE.Euler;
+  groupRotationY: number;
+  isReturning?: boolean;
+  returnTargetPosition?: THREE.Vector3;
+  returnTargetScale?: number;
+  returnTargetRotation?: THREE.Euler;
+  returnGroupRotationY?: number;
+  onReturnComplete?: () => void;
+  onStateUpdate?: (position: THREE.Vector3, scale: number, rotation: THREE.Quaternion) => void;
 }) => {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
   const positionRef = useRef(new THREE.Vector3());
+  const scaleRef = useRef(1);
+  const quaternionRef = useRef(new THREE.Quaternion());
+  const transitionProgressRef = useRef(0);
   const initializedRef = useRef(false);
+  const returningStartedRef = useRef(false);
+  const returnProgressRef = useRef(0);
 
   const baseSize = 0.5 * photoScale;
   const innerBorder = 0.02 * photoScale;
@@ -170,30 +197,101 @@ const SelectedPhoto = memo(({
     const distance = mobile ? 3 : 4;
     const targetScale = mobile ? 3 : 4;
     
+    // 返回动画模式
+    if (isReturning && returnTargetPosition && returnTargetScale !== undefined && returnTargetRotation && returnGroupRotationY !== undefined) {
+      // 初始化返回动画起点（当前位置）
+      if (!returningStartedRef.current) {
+        returningStartedRef.current = true;
+        returnProgressRef.current = 0;
+      }
+      
+      // 计算返回目标的世界坐标
+      const worldTargetPos = returnTargetPosition.clone();
+      worldTargetPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), returnGroupRotationY);
+      
+      // 返回动画进度
+      returnProgressRef.current = Math.min(1, returnProgressRef.current + delta * 4);
+      const t = returnProgressRef.current;
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      
+      // 位置插值到目标
+      positionRef.current.lerp(worldTargetPos, eased * 0.2);
+      groupRef.current.position.copy(positionRef.current);
+      
+      // 缩放插值
+      scaleRef.current = MathUtils.lerp(scaleRef.current, returnTargetScale, eased * 0.2);
+      groupRef.current.scale.setScalar(scaleRef.current);
+      
+      // 旋转插值
+      const targetQuat = new THREE.Quaternion().setFromEuler(returnTargetRotation);
+      const groupQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), returnGroupRotationY);
+      const finalQuat = new THREE.Quaternion().multiplyQuaternions(groupQuat, targetQuat);
+      quaternionRef.current.slerp(finalQuat, eased * 0.2);
+      groupRef.current.quaternion.copy(quaternionRef.current);
+      
+      // 动画完成
+      if (t >= 0.95) {
+        onReturnComplete?.();
+      }
+      return;
+    }
+    
     // 计算相机前方的目标位置
     const cameraDir = new THREE.Vector3();
     camera.getWorldDirection(cameraDir);
-    const target = camera.position.clone().add(cameraDir.multiplyScalar(distance));
-    target.y += mobile ? 0.3 : 0.5;
+    const targetPosition = camera.position.clone().add(cameraDir.multiplyScalar(distance));
+    targetPosition.y += mobile ? 0.3 : 0.5;
     
-    // 初始化位置或平滑移动
+    // 初始化 - 从原始位置开始
     if (!initializedRef.current) {
-      positionRef.current.copy(target);
+      // 计算世界坐标中的初始位置（考虑父级旋转）
+      const worldInitialPos = initialPosition.clone();
+      worldInitialPos.applyAxisAngle(new THREE.Vector3(0, 1, 0), groupRotationY);
+      
+      positionRef.current.copy(worldInitialPos);
+      scaleRef.current = initialScale;
+      
+      // 初始旋转 - 结合原始旋转和父级旋转
+      const initialQuat = new THREE.Quaternion().setFromEuler(initialRotation);
+      const groupQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), groupRotationY);
+      quaternionRef.current.multiplyQuaternions(groupQuat, initialQuat);
+      
+      transitionProgressRef.current = 0;
       initializedRef.current = true;
-    } else {
-      positionRef.current.lerp(target, Math.min(1, delta * 12));
     }
     
+    // 平滑过渡动画 - 使用 easeOutCubic 缓动
+    transitionProgressRef.current = Math.min(1, transitionProgressRef.current + delta * 3);
+    const t = transitionProgressRef.current;
+    const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+    
+    // 位置插值
+    positionRef.current.lerp(targetPosition, eased * 0.15);
     groupRef.current.position.copy(positionRef.current);
-    groupRef.current.scale.setScalar(targetScale);
     
-    // 使用相机的旋转矩阵来确保照片正确面向相机，不会颠倒
-    // 复制相机的四元数旋转，这样照片会和相机屏幕平行
-    groupRef.current.quaternion.copy(camera.quaternion);
+    // 缩放插值
+    scaleRef.current = MathUtils.lerp(scaleRef.current, targetScale, eased * 0.15);
+    groupRef.current.scale.setScalar(scaleRef.current);
     
-    // 轻微摆动效果 - 在四元数基础上添加
-    const wobble = Math.sin(time * 2) * 0.02;
-    groupRef.current.rotateZ(wobble);
+    // 旋转插值 - 平滑过渡到面向相机
+    const targetQuat = camera.quaternion.clone();
+    quaternionRef.current.slerp(targetQuat, eased * 0.15);
+    groupRef.current.quaternion.copy(quaternionRef.current);
+    
+    // 轻微摆动效果 - 只在过渡完成后添加
+    if (t > 0.8) {
+      const wobble = Math.sin(time * 2) * 0.02 * (t - 0.8) / 0.2;
+      groupRef.current.rotateZ(wobble);
+    }
+    
+    // 更新状态给父组件（用于返回动画的起点）
+    if (!isReturning && onStateUpdate) {
+      onStateUpdate(
+        positionRef.current.clone(),
+        scaleRef.current,
+        quaternionRef.current.clone()
+      );
+    }
   });
 
   return (
@@ -205,7 +303,7 @@ const SelectedPhoto = memo(({
           position={[0, 0, -0.02]}
           onClick={(e) => {
             e.stopPropagation();
-            onDeselect();
+            if (!isReturning) onDeselect();
           }}
         >
           <meshBasicMaterial color={frameColor} side={THREE.FrontSide} />
@@ -224,7 +322,7 @@ const SelectedPhoto = memo(({
           position={[0, 0, -0.02]}
           onClick={(e) => {
             e.stopPropagation();
-            onDeselect();
+            if (!isReturning) onDeselect();
           }}
         >
           <meshBasicMaterial color={frameColor} side={THREE.FrontSide} />
@@ -254,6 +352,16 @@ export const PhotoOrnaments = memo(({ photoPaths }: PhotoOrnamentsProps) => {
   const targetChaosRef = useRef<THREE.Vector3[]>([]);
   const chaosTransitionRef = useRef(1);
   const rotationRef = useRef(0);
+  
+  // 返回动画状态
+  const [returningPhoto, setReturningPhoto] = useState<{
+    photoId: string;
+    index: number;
+    initialPosition: THREE.Vector3;
+    initialScale: number;
+    initialRotation: THREE.Euler;
+    groupRotationY: number;
+  } | null>(null);
 
   // 形状参数
   const shapeHeight = 4 * settings.shapeScale;
@@ -344,6 +452,72 @@ export const PhotoOrnaments = memo(({ photoPaths }: PhotoOrnamentsProps) => {
     return photos.findIndex(p => p.id === selectedPhotoId);
   }, [selectedPhotoId, photos]);
 
+  // 存储选中照片的原始状态（用于过渡动画）
+  const selectedPhotoStateRef = useRef<{
+    position: THREE.Vector3;
+    scale: number;
+    rotation: THREE.Euler;
+    groupRotationY: number;
+  } | null>(null);
+  
+  // 存储选中照片的当前显示状态（用于返回动画的起点）
+  const selectedPhotoCurrentStateRef = useRef<{
+    position: THREE.Vector3;
+    scale: number;
+    rotation: THREE.Quaternion;
+  } | null>(null);
+  
+  // 上一次选中的照片ID，用于检测变化
+  const prevSelectedPhotoIdRef = useRef<string | null>(null);
+  
+  // 当选中变化时，处理动画状态
+  if (selectedPhotoId !== prevSelectedPhotoIdRef.current) {
+    const prevId = prevSelectedPhotoIdRef.current;
+    const prevIndex = prevId ? photos.findIndex(p => p.id === prevId) : -1;
+    
+    // 如果之前有选中的照片，且现在取消选中，启动返回动画
+    if (prevId && !selectedPhotoId && prevIndex >= 0 && selectedPhotoStateRef.current && data[prevIndex]) {
+      // 使用当前显示状态作为返回动画的起点
+      const currentState = selectedPhotoCurrentStateRef.current;
+      if (currentState) {
+        setReturningPhoto({
+          photoId: prevId,
+          index: prevIndex,
+          initialPosition: currentState.position.clone(),
+          initialScale: currentState.scale,
+          initialRotation: new THREE.Euler().setFromQuaternion(currentState.rotation),
+          groupRotationY: 0 // 已经是世界坐标，不需要额外旋转
+        });
+      }
+    }
+    
+    // 如果选中了新照片，记录其原始状态
+    if (selectedPhotoId && selectedIndex !== null && selectedIndex >= 0 && data[selectedIndex]) {
+      const objData = data[selectedIndex];
+      const childGroup = groupRef.current?.children[selectedIndex] as THREE.Group | undefined;
+      selectedPhotoStateRef.current = {
+        position: objData.currentPos.clone(),
+        scale: objData.currentScale,
+        rotation: childGroup ? new THREE.Euler().copy(childGroup.rotation) : new THREE.Euler(),
+        groupRotationY: rotationRef.current
+      };
+      // 重置当前状态
+      selectedPhotoCurrentStateRef.current = null;
+    }
+    
+    prevSelectedPhotoIdRef.current = selectedPhotoId;
+  }
+  
+  // 返回动画完成的回调
+  const handleReturnComplete = () => {
+    setReturningPhoto(null);
+  };
+  
+  // 更新选中照片当前状态的回调
+  const updateSelectedPhotoState = (position: THREE.Vector3, scale: number, rotation: THREE.Quaternion) => {
+    selectedPhotoCurrentStateRef.current = { position, scale, rotation };
+  };
+
   useFrame((stateObj, delta) => {
     if (!groupRef.current) return;
     const isFormed = !isParticleSpread;
@@ -370,10 +544,11 @@ export const PhotoOrnaments = memo(({ photoPaths }: PhotoOrnamentsProps) => {
 
       const photoId = photos[i]?.id;
       const isSelected = selectedPhotoId === photoId;
+      const isReturningThis = returningPhoto?.photoId === photoId;
       
-      // 选中的照片隐藏（由 SelectedPhoto 组件独立渲染）
-      group.visible = !isSelected;
-      if (isSelected) return;
+      // 选中的照片或正在返回的照片隐藏（由独立组件渲染）
+      group.visible = !isSelected && !isReturningThis;
+      if (isSelected || isReturningThis) return;
 
       const currentChaos = currentChaosRef.current[i];
       const targetChaos = targetChaosRef.current[i];
@@ -450,12 +625,43 @@ export const PhotoOrnaments = memo(({ photoPaths }: PhotoOrnamentsProps) => {
       </group>
       
       {/* 选中的照片 - 独立渲染，不受旋转影响 */}
-      {selectedIndex !== null && selectedIndex >= 0 && textureData[selectedIndex] && (
+      {selectedIndex !== null && selectedIndex >= 0 && textureData[selectedIndex] && selectedPhotoStateRef.current && (
         <SelectedPhoto
+          key={selectedPhotoId} // 添加 key 确保组件重新创建
           texture={textureData[selectedIndex].texture}
           aspectRatio={textureData[selectedIndex].aspectRatio}
           photoScale={photoScale}
           onDeselect={() => setSelectedPhotoId(null)}
+          initialPosition={selectedPhotoStateRef.current.position}
+          initialScale={selectedPhotoStateRef.current.scale}
+          initialRotation={selectedPhotoStateRef.current.rotation}
+          groupRotationY={selectedPhotoStateRef.current.groupRotationY}
+          onStateUpdate={updateSelectedPhotoState}
+        />
+      )}
+      
+      {/* 返回中的照片 - 播放返回动画 */}
+      {returningPhoto && textureData[returningPhoto.index] && data[returningPhoto.index] && (
+        <SelectedPhoto
+          key={`returning-${returningPhoto.photoId}`}
+          texture={textureData[returningPhoto.index].texture}
+          aspectRatio={textureData[returningPhoto.index].aspectRatio}
+          photoScale={photoScale}
+          onDeselect={() => {}}
+          initialPosition={returningPhoto.initialPosition}
+          initialScale={returningPhoto.initialScale}
+          initialRotation={returningPhoto.initialRotation}
+          groupRotationY={returningPhoto.groupRotationY}
+          isReturning={true}
+          returnTargetPosition={data[returningPhoto.index].currentPos}
+          returnTargetScale={data[returningPhoto.index].currentScale}
+          returnTargetRotation={
+            groupRef.current?.children[returningPhoto.index] 
+              ? new THREE.Euler().copy((groupRef.current.children[returningPhoto.index] as THREE.Group).rotation)
+              : data[returningPhoto.index].chaosRotation
+          }
+          returnGroupRotationY={rotationRef.current}
+          onReturnComplete={handleReturnComplete}
         />
       )}
     </>
