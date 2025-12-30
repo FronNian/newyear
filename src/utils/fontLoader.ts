@@ -3,11 +3,12 @@
  * 多 CDN 备用，自动故障转移
  */
 
-// 字体 CDN 源列表（按优先级排序）
+// 字体 CDN 源列表（按优先级排序）- 使用完整字体文件
 const FONT_SOURCES = [
   {
-    name: '字节跳动',
-    url: 'https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/fontsource-noto-sans-sc/4.2.2/chinese-simplified-700-normal.woff2',
+    name: 'npmmirror',
+    // npmmirror 国内镜像，完整字体
+    url: 'https://registry.npmmirror.com/@aspect-build/aspect-fonts/0.0.1/files/fonts/noto-sans-sc/NotoSansSC-Bold.woff2',
   },
   {
     name: 'jsDelivr',
@@ -22,6 +23,7 @@ const FONT_SOURCES = [
 // 字体加载状态
 let fontLoaded = false;
 let fontLoadPromise: Promise<void> | null = null;
+let loadedFontName: string | null = null;
 
 /**
  * 尝试从单个源加载字体
@@ -34,14 +36,26 @@ async function tryLoadFont(source: typeof FONT_SOURCES[0]): Promise<boolean> {
       { weight: '700', display: 'swap' }
     );
     
-    // 设置超时
+    // 设置超时 8 秒
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('timeout')), 5000);
+      setTimeout(() => reject(new Error('timeout')), 8000);
     });
     
     await Promise.race([fontFace.load(), timeoutPromise]);
     document.fonts.add(fontFace);
+    
+    // 验证字体是否真正可用（测试渲染数字和中文）
+    await document.fonts.ready;
+    const testChars = '0123456789新年快乐';
+    const isValid = document.fonts.check(`700 16px "Noto Sans SC"`, testChars);
+    
+    if (!isValid) {
+      console.warn(`[FontLoader] ${source.name} 字体加载但验证失败`);
+      return false;
+    }
+    
     console.log(`[FontLoader] 字体加载成功: ${source.name}`);
+    loadedFontName = source.name;
     return true;
   } catch (error) {
     console.warn(`[FontLoader] ${source.name} 加载失败:`, error);
@@ -58,16 +72,6 @@ export async function ensureFontLoaded(): Promise<void> {
   
   if (!fontLoadPromise) {
     fontLoadPromise = (async () => {
-      // 先检查字体是否已通过 CSS 加载
-      if ('fonts' in document) {
-        await document.fonts.ready;
-        if (document.fonts.check('700 16px "Noto Sans SC"')) {
-          console.log('[FontLoader] 字体已通过 CSS 加载');
-          fontLoaded = true;
-          return;
-        }
-      }
-      
       // 依次尝试各个 CDN 源
       for (const source of FONT_SOURCES) {
         const success = await tryLoadFont(source);
@@ -91,6 +95,13 @@ export async function ensureFontLoaded(): Promise<void> {
  */
 export function isFontLoaded(): boolean {
   return fontLoaded;
+}
+
+/**
+ * 获取已加载的字体源名称
+ */
+export function getLoadedFontSource(): string | null {
+  return loadedFontName;
 }
 
 /**
