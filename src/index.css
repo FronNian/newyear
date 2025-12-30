@@ -1,5 +1,4 @@
-/* 使用字节跳动 CDN 加载 Noto Sans SC（国内访问快） */
-@import url('https://fonts.bytedance.net/css2?family=Noto+Sans+SC:wght@700&display=swap');
+/* 字体由 fontLoader.ts 动态加载，支持多 CDN 故障转移 */
 
 @tailwind base;
 @tailwind components;
