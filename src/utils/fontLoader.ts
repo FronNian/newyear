@@ -18,22 +18,21 @@ export async function ensureFontLoaded(): Promise<void> {
     fontLoadPromise = (async () => {
       try {
         if ('fonts' in document) {
+          // 等待 CSS 中通过 CDN 加载的字体就绪
           await document.fonts.ready;
-          // 使用本地字体文件
-          const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-          const fontFace = new FontFace(
-            'Noto Sans SC',
-            `url(${baseUrl}/fonts/NotoSansSC-Bold.ttf)`,
-            { weight: '700' }
-          );
-          await fontFace.load();
-          document.fonts.add(fontFace);
-          console.log('[FontLoader] Noto Sans SC 本地字体加载成功');
+          
+          // 检查字体是否已通过 CSS @import 加载
+          const hasFont = document.fonts.check('700 16px "Noto Sans SC"');
+          if (hasFont) {
+            console.log('[FontLoader] Noto Sans SC CDN 字体加载成功');
+          } else {
+            console.log('[FontLoader] 使用系统中文字体');
+          }
         }
         fontLoaded = true;
       } catch (error) {
-        console.warn('[FontLoader] 字体加载失败，使用系统字体:', error);
-        fontLoaded = true; // 即使失败也标记为完成，使用系统字体
+        console.warn('[FontLoader] 字体加载检查失败，使用系统字体:', error);
+        fontLoaded = true;
       }
     })();
   }
