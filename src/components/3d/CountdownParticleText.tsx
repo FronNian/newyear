@@ -9,6 +9,7 @@ interface CountdownParticleTextProps {
   text: string;
   colorTheme: ColorTheme;
   particleCount?: number;
+  particleSize?: number;
   position?: [number, number, number];
   scale?: number;
 }
@@ -174,8 +175,21 @@ function getBitmapCharPositions(char: string, particlesPerChar: number): Float32
 }
 
 /**
+ * 创建空位置数组（用于空格等）
+ */
+function createEmptyPositions(particlesPerChar: number): Float32Array {
+  const positions = new Float32Array(particlesPerChar * 3);
+  for (let i = 0; i < particlesPerChar; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 0.1;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 0.1;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+  }
+  return positions;
+}
+
+/**
  * 获取单个字符的粒子位置（带缓存）
- * 优先使用 Canvas 字体渲染，失败时使用点阵备用
+ * 优先使用 Canvas 字体渲染，只有渲染失败时才用点阵备用
  */
 function getCharParticlePositions(char: string, particlesPerChar: number, useBitmap: boolean = false): Float32Array {
   const cacheKey = `${char}_${particlesPerChar}_${useBitmap ? 'bitmap' : 'font'}`;
@@ -183,20 +197,22 @@ function getCharParticlePositions(char: string, particlesPerChar: number, useBit
     return charPositionCache.get(cacheKey)!;
   }
   
-  // 如果强制使用点阵或字符是数字/符号，优先尝试点阵
-  if (useBitmap || /^[0-9: ]$/.test(char)) {
-    if (BITMAP_FONT[char]) {
-      const positions = getBitmapCharPositions(char, particlesPerChar);
-      charPositionCache.set(cacheKey, positions);
-      return positions;
-    }
+  // 只有明确指定使用点阵时才用点阵
+  if (useBitmap && BITMAP_FONT[char]) {
+    const positions = getBitmapCharPositions(char, particlesPerChar);
+    charPositionCache.set(cacheKey, positions);
+    return positions;
   }
   
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   
   if (!ctx) {
-    return getBitmapCharPositions(char, particlesPerChar);
+    // Canvas 不可用，使用点阵备用
+    if (BITMAP_FONT[char]) {
+      return getBitmapCharPositions(char, particlesPerChar);
+    }
+    return createEmptyPositions(particlesPerChar);
   }
   
   const canvasSize = 128;
@@ -286,11 +302,13 @@ function CharParticles({
   char,
   colorTheme,
   particlesPerChar,
+  particleSize = 1.0,
   xOffset,
 }: {
   char: string;
   colorTheme: ColorTheme;
   particlesPerChar: number;
+  particleSize?: number;
   xOffset: number;
 }) {
   const pointsRef = useRef<THREE.Points>(null);
@@ -323,7 +341,9 @@ function CharParticles({
       colorsArray[i * 3 + 1] = color.g;
       colorsArray[i * 3 + 2] = color.b;
       
-      sizesArray[i] = 0.08 + Math.random() * 0.04;
+      // 粒子大小：基础大小 * 配置倍数 + 随机变化
+      const baseSize = 0.08 * particleSize;
+      sizesArray[i] = baseSize + Math.random() * baseSize * 0.5;
       
       initPos[i * 3] = 0;
       initPos[i * 3 + 1] = 0;
@@ -331,7 +351,26 @@ function CharParticles({
     }
     
     return { colors: colorsArray, sizes: sizesArray, initialPositions: initPos };
-  }, [particlesPerChar, colorTheme]);
+  }, [particlesPerChar, particleSize, colorTheme]);
+  
+  // 当颜色或大小变化时，更新 geometry 属性
+  useEffect(() => {
+    if (!pointsRef.current) return;
+    const geometry = pointsRef.current.geometry;
+    
+    const colorAttr = geometry.attributes.color;
+    const sizeAttr = geometry.attributes.size;
+    
+    if (colorAttr && colors.length === colorAttr.array.length) {
+      (colorAttr.array as Float32Array).set(colors);
+      colorAttr.needsUpdate = true;
+    }
+    
+    if (sizeAttr && sizes.length === sizeAttr.array.length) {
+      (sizeAttr.array as Float32Array).set(sizes);
+      sizeAttr.needsUpdate = true;
+    }
+  }, [colors, sizes]);
   
   // 当字符变化时，计算新的目标位置
   useEffect(() => {
@@ -476,6 +515,7 @@ export default function CountdownParticleText({
   text,
   colorTheme,
   particleCount = 5000,
+  particleSize = 1.0,
   position = [0, 0, 0],
   scale = 1,
 }: CountdownParticleTextProps) {
@@ -555,6 +595,7 @@ export default function CountdownParticleText({
           char={char || ' '}
           colorTheme={colorTheme}
           particlesPerChar={particlesPerChar}
+          particleSize={particleSize}
           xOffset={charOffsets[index]}
         />
       ))}

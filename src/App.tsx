@@ -3,13 +3,14 @@ import { Scene } from '@/components/3d';
 import { SettingsPanel, ShareModal, MusicPlayer, PhotoUploader, GestureIndicator, OnboardingGuide, TimelineControls, GlobalChromaticAberration, ShareView, ToastContainer, toast, KeyboardShortcuts } from '@/components/ui';
 import ManualTriggerButton from '@/components/ui/ManualTriggerButton';
 import AutoTriggerIndicator from '@/components/ui/AutoTriggerIndicator';
-import { useAppStore, useSettings, useAutoTriggerConfig } from '@/stores/appStore';
+import { useAppStore, useSettings, useAutoTriggerConfig, useCelebrationState } from '@/stores/appStore';
 import { useStorylineStore, useHasConfiguredMonths } from '@/stores/storylineStore';
 import { useShareStore } from '@/stores/shareStore';
 import { loadShareDataFromUrl, isShareLink } from '@/services/shareService';
 import { useAutoCountdownTrigger, setupAutoTriggerDebugCommands } from '@/hooks/useAutoCountdownTrigger';
 import { useShareRoute } from '@/hooks/useShareRoute';
 import { calculateTargetTime, getSecondsToTarget, formatCountdown, calculateCountdown } from '@/utils/countdown';
+import { getThemeButtonStyle } from '@/types';
 import { Sparkles, Settings, Share2, Play, Maximize2, Minimize2, Camera, Clock, X, Maximize, Minimize, Keyboard } from 'lucide-react';
 
 // 全屏 Hook
@@ -66,9 +67,15 @@ function App() {
   const toggleParticleSpread = useAppStore((state) => state.toggleParticleSpread);
   const startCelebration = useAppStore((state) => state.startCelebration);
   const setIsPlaying = useAppStore((state) => state.setIsPlaying);
+  const isDemoMode = useAppStore((state) => state.isDemoMode);
+  const toggleDemoMode = useAppStore((state) => state.toggleDemoMode);
   const settings = useSettings();
   const autoTriggerConfig = useAutoTriggerConfig();
+  const celebrationState = useCelebrationState();
   const [gestureDebugMode, setGestureDebugMode] = useState(false);
+  
+  // 获取主题按钮样式
+  const themeButtonStyle = useMemo(() => getThemeButtonStyle(settings.colorTheme), [settings.colorTheme]);
   
   const isStorylineMode = useStorylineStore((state) => state.isStorylineMode);
   const hasConfiguredMonths = useHasConfiguredMonths();
@@ -232,8 +239,21 @@ function App() {
         return;
       }
       
-      // 空格键或回车键开始倒计时
-      if ((e.key === ' ' || e.key === 'Enter') && !isManualCountdownActive && !isStorylineMode) {
+      // D 键切换 Demo 模式
+      if (e.key === 'd' || e.key === 'D') {
+        toggleDemoMode();
+        return;
+      }
+      
+      // 空格键切换粒子聚合/散开
+      if (e.key === ' ') {
+        e.preventDefault();
+        toggleParticleSpread();
+        return;
+      }
+      
+      // 回车键开始倒计时
+      if (e.key === 'Enter' && !isManualCountdownActive && !isStorylineMode) {
         e.preventDefault();
         startManualCountdown();
         return;
@@ -248,12 +268,6 @@ function App() {
       // F 键全屏切换
       if (e.key === 'f' || e.key === 'F') {
         toggleFullscreen();
-        return;
-      }
-      
-      // V 键切换粒子聚合/散开
-      if (e.key === 'v' || e.key === 'V') {
-        toggleParticleSpread();
         return;
       }
       
@@ -310,7 +324,7 @@ function App() {
     
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isMobile, isShareView, isSettingsOpen, isShareModalOpen, showKeyboardHelp, isManualCountdownActive, isStorylineMode, isPlaying, startManualCountdown, requestCameraReset, toggleFullscreen, toggleParticleSpread, setIsPlaying, prevSong, nextSong, triggerEffect, setSettingsOpen, setShareModalOpen]);
+  }, [isMobile, isShareView, isSettingsOpen, isShareModalOpen, showKeyboardHelp, isManualCountdownActive, isStorylineMode, isPlaying, startManualCountdown, requestCameraReset, toggleFullscreen, toggleParticleSpread, toggleDemoMode, setIsPlaying, prevSong, nextSong, triggerEffect, setSettingsOpen, setShareModalOpen]);
   
   return (
     <div className="w-full h-full relative">
@@ -338,8 +352,8 @@ function App() {
         </h1>
       </div>
       
-      {/* 自动触发状态指示器 - 故事线模式和分享页时隐藏 */}
-      {!isStorylineMode && !isShareView && (
+      {/* 自动触发状态指示器 - 故事线模式、分享页和Demo模式时隐藏 */}
+      {!isStorylineMode && !isShareView && !isDemoMode && (
         <div className="absolute top-4 right-4 z-20" data-chromatic-text>
           <AutoTriggerIndicator
             isEnabled={isAutoEnabled}
@@ -350,11 +364,15 @@ function App() {
         </div>
       )}
       
-      {/* 开始倒计时按钮 - 居中显示，不同屏幕尺寸调整位置，故事线模式和分享页时隐藏 */}
-      {!isManualCountdownActive && !isStorylineMode && !isShareView && (
+      {/* 开始倒计时按钮 - 居中显示，庆祝期间、故事线模式、分享页和Demo模式时隐藏 */}
+      {!isManualCountdownActive && !celebrationState.isActive && !isStorylineMode && !isShareView && !isDemoMode && (
         <div className="absolute bottom-40 sm:bottom-32 md:bottom-24 left-1/2 -translate-x-1/2 z-20" data-chromatic-text>
           <button
-            className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 rounded-full text-white font-bold text-base sm:text-lg shadow-lg shadow-orange-500/30 transition-all hover:scale-105 flex items-center gap-2 sm:gap-3"
+            className="px-6 py-3 sm:px-8 sm:py-4 rounded-full text-white font-bold text-base sm:text-lg transition-all hover:scale-105 flex items-center gap-2 sm:gap-3"
+            style={{
+              background: themeButtonStyle.gradient,
+              boxShadow: themeButtonStyle.shadow,
+            }}
             onClick={startManualCountdown}
           >
             <Play className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -377,7 +395,11 @@ function App() {
             
             {/* 播放按钮 */}
             <button
-              className="px-6 py-3 sm:px-8 sm:py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 rounded-full text-white font-bold text-base sm:text-lg shadow-lg shadow-orange-500/30 transition-all hover:scale-105 flex items-center gap-2 sm:gap-3"
+              className="px-6 py-3 sm:px-8 sm:py-4 rounded-full text-white font-bold text-base sm:text-lg transition-all hover:scale-105 flex items-center gap-2 sm:gap-3"
+              style={{
+                background: themeButtonStyle.gradient,
+                boxShadow: themeButtonStyle.shadow,
+              }}
               onClick={handleSharePlayCountdown}
             >
               <Play className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -425,7 +447,8 @@ function App() {
               </button>
               <button
                 onClick={handleSharePlayCountdown}
-                className="flex-1 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-3 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                style={{ background: themeButtonStyle.gradient }}
               >
                 <Play className="w-5 h-5" />
                 播放
@@ -435,8 +458,8 @@ function App() {
         </div>
       )}
       
-      {/* 底部工具栏 - 移动端调整位置避免被音乐播放器遮挡 */}
-      {!isStorylineMode && (
+      {/* 底部工具栏 - 庆祝期间和Demo模式时隐藏 */}
+      {!isStorylineMode && !isDemoMode && !celebrationState.isActive && (
         <div className="absolute bottom-20 sm:bottom-4 left-4 right-4 flex justify-between items-center z-20" data-chromatic-text>
           {/* 左侧按钮 */}
           <div className="flex gap-2">

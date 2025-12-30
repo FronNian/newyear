@@ -10,11 +10,11 @@ const isMobile = () => /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera
 
 // 快捷键列表
 const shortcuts = [
-  { key: 'Space', description: '开始倒计时', category: '倒计时' },
+  { key: 'Space', description: '粒子聚合/散开', category: '场景控制' },
   { key: 'Enter', description: '开始倒计时', category: '倒计时' },
+  { key: 'D', description: 'Demo模式（隐藏按钮）', category: '界面' },
   { key: 'R', description: '重置视角', category: '场景控制' },
   { key: 'F', description: '全屏切换', category: '场景控制' },
-  { key: 'V', description: '粒子聚合/散开', category: '场景控制' },
   { key: 'M', description: '音乐播放/暂停', category: '媒体控制' },
   { key: ',', description: '上一首', category: '媒体控制' },
   { key: '.', description: '下一首', category: '媒体控制' },

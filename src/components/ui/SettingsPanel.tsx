@@ -981,19 +981,29 @@ export default function SettingsPanel() {
               </p>
             </div>
             
-            {/* 倒计时粒子数量 - 仅在粒子模式下显示 */}
-            {settings.countdownDisplayMode === 'particle' && (
-              <Slider
-                label="倒计时粒子数量"
-                value={settings.countdownParticleCount}
-                min={3000}
-                max={20000}
-                step={1000}
-                onChange={(v) => updateSettings({ countdownParticleCount: v })}
-                minLabel="少"
-                maxLabel="多"
-              />
-            )}
+            {/* 倒计时粒子数量 */}
+            <Slider
+              label="倒计时粒子数量"
+              value={settings.countdownParticleCount}
+              min={5000}
+              max={50000}
+              step={1000}
+              onChange={(v) => updateSettings({ countdownParticleCount: v })}
+              minLabel="稀疏"
+              maxLabel="密集"
+            />
+            
+            {/* 倒计时粒子大小 */}
+            <Slider
+              label="倒计时粒子大小"
+              value={settings.countdownParticleSize}
+              min={0.5}
+              max={3.0}
+              step={0.1}
+              onChange={(v) => updateSettings({ countdownParticleSize: v })}
+              minLabel="小"
+              maxLabel="大"
+            />
             
             <Slider
               label="倒计时字体大小"

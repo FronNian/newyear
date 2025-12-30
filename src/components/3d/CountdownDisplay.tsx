@@ -3,6 +3,7 @@ import { Text, Billboard } from '@react-three/drei';
 import { useAppStore, useCountdown, useSettings } from '@/stores/appStore';
 import { calculateCountdown, formatCountdown, getFinalCountdownNumber } from '@/utils/countdown';
 import { getShapeBounds } from '@/utils/particleUtils';
+import { COLOR_THEME_MAP } from '@/types';
 import CountdownParticleText from './CountdownParticleText';
 
 export default function CountdownDisplay() {
@@ -45,10 +46,13 @@ export default function CountdownDisplay() {
   };
 
   const getParticleCount = () => {
-    const base = settings.countdownParticleCount || 10000;
-    if (countdown.isLastTenSeconds) return Math.min(base * 1.5, 25000);
+    const base = settings.countdownParticleCount || 15000;
+    if (countdown.isLastTenSeconds) return Math.min(base * 1.5, 40000);
     return base;
   };
+
+  // 获取主题颜色
+  const themeColors = COLOR_THEME_MAP[settings.colorTheme];
 
   return (
     <group position={[0, textY, 0]}>
@@ -56,12 +60,13 @@ export default function CountdownDisplay() {
         text={getDisplayText()}
         colorTheme={settings.colorTheme}
         particleCount={getParticleCount()}
+        particleSize={settings.countdownParticleSize || 1.5}
         position={[0, 0, 0]}
         scale={getParticleScale()}
       />
       {!countdown.isLastTenSeconds && !countdown.isFinished && (
         <Billboard follow={true} position={[0, -2.0, 0]}>
-          <Text fontSize={0.2} color="#AAAAAA" anchorX="center" anchorY="middle">
+          <Text fontSize={0.2} color={themeColors.accent} anchorX="center" anchorY="middle">
             距 {settings.targetYear} 年还有
           </Text>
         </Billboard>

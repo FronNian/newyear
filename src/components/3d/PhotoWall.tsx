@@ -2,7 +2,7 @@ import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { usePhotoWallSettings, useCelebrationState, usePhotos } from '@/stores/appStore';
+import { usePhotoWallSettings, useCelebrationState, usePhotos, useCountdown } from '@/stores/appStore';
 import type { PhotoWallSettings, PhotoData } from '@/types';
 
 // ============================================
@@ -523,6 +523,7 @@ function WallTextDisplay({ settings, wallHeight }: {
 export default function PhotoWall() {
   const settings = usePhotoWallSettings();
   const celebrationState = useCelebrationState();
+  const countdown = useCountdown();
   const allPhotos = usePhotos();
   
   const selectedPhotos = useMemo(() => {
@@ -531,10 +532,12 @@ export default function PhotoWall() {
     return filtered.length === 0 ? allPhotos : filtered;
   }, [allPhotos, settings.selectedPhotoIds]);
   
+  // 判断是否显示照片墙
   const shouldShow = settings.enabled && selectedPhotos.length > 0 && (
     settings.displayMode === 'global' ||
     (settings.displayMode === 'celebration' && celebrationState.isActive &&
-      ['year_display', 'blessing', 'confetti'].includes(celebrationState.phase))
+      ['year_display', 'blessing', 'confetti'].includes(celebrationState.phase)) ||
+    (settings.displayMode === 'after-countdown' && (countdown.isFinished || celebrationState.isActive))
   );
   
   const opacityRef = useRef(0);

@@ -1,8 +1,8 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSettings } from '@/stores/appStore';
+import CountdownParticleText from './CountdownParticleText';
 
 interface YearDisplayProps {
   visible: boolean;
@@ -118,7 +118,6 @@ function Sparkles({ count = 50, radius = 2.5 }: { count?: number; radius?: numbe
 export default function YearDisplay({ visible, onAnimationComplete }: YearDisplayProps) {
   const settings = useSettings();
   const groupRef = useRef<THREE.Group>(null);
-  const textRef = useRef<THREE.Mesh>(null);
   const [opacity, setOpacity] = useState(0);
   const [showSparkles, setShowSparkles] = useState(false);
   const animationStartTime = useRef<number | null>(null);
@@ -192,42 +191,17 @@ export default function YearDisplay({ visible, onAnimationComplete }: YearDispla
   
   return (
     <group ref={groupRef} position={[0, 1.5, 0]}>
-      {/* 年份文字 */}
-      <Text
-        ref={textRef}
-        fontSize={1.5}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.02}
-        outlineColor="#FFA500"
-      >
-        {yearText}
-        <meshStandardMaterial
-          color="#FFD700"
-          emissive="#FFD700"
-          emissiveIntensity={0.8}
-          transparent
-          opacity={opacity}
-          metalness={0.3}
-          roughness={0.4}
+      {/* 年份粒子文字 */}
+      <group scale={[opacity, opacity, opacity]}>
+        <CountdownParticleText
+          text={yearText}
+          colorTheme={settings.colorTheme}
+          particleCount={settings.countdownParticleCount || 15000}
+          particleSize={settings.countdownParticleSize || 1.5}
+          position={[0, 0, 0]}
+          scale={2.5}
         />
-      </Text>
-      
-      {/* 发光效果层 */}
-      <Text
-        fontSize={1.52}
-        anchorX="center"
-        anchorY="middle"
-        position={[0, 0, -0.01]}
-      >
-        {yearText}
-        <meshBasicMaterial
-          color="#FFA500"
-          transparent
-          opacity={opacity * 0.3}
-          blending={THREE.AdditiveBlending}
-        />
-      </Text>
+      </group>
       
       {/* 粒子火花 */}
       {showSparkles && <Sparkles count={80} radius={2.5} />}

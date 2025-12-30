@@ -122,7 +122,8 @@ export interface AppSettings {
   fontStyle: FontStyle;            // 字体样式
   countdownFontSize: number;       // 倒计时字体大小 0.3-1.5
   countdownDisplayMode: CountdownDisplayMode;  // 倒计时显示模式
-  countdownParticleCount: number;  // 倒计时粒子数量 3000-20000
+  countdownParticleCount: number;  // 倒计时粒子数量 5000-30000
+  countdownParticleSize: number;   // 倒计时粒子大小 0.5-3.0
   volume: number;                  // 音量 0-1
   targetYear: number;              // 目标年份
   countdownDuration: number;       // 手动倒计时秒数 (3-10)
@@ -147,7 +148,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fontStyle: 'modern',
   countdownFontSize: 0.5,
   countdownDisplayMode: 'text',  // 默认文字模式
-  countdownParticleCount: 8000,  // 倒计时粒子数量默认值
+  countdownParticleCount: 15000,  // 倒计时粒子数量默认值
+  countdownParticleSize: 1.5,     // 倒计时粒子大小默认值
   volume: 0.7,
   targetYear: 2026,
   countdownDuration: 5,
@@ -393,6 +395,20 @@ export const COLOR_THEME_MAP: Record<ColorTheme, ThemeColors> = {
     glow: '#ffffff',
   },
 };
+
+/** 获取主题对应的按钮渐变样式 */
+export function getThemeButtonStyle(theme: ColorTheme): {
+  gradient: string;
+  hoverGradient: string;
+  shadow: string;
+} {
+  const colors = COLOR_THEME_MAP[theme];
+  return {
+    gradient: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})`,
+    hoverGradient: `linear-gradient(to right, ${colors.accent}, ${colors.primary})`,
+    shadow: `0 10px 15px -3px ${colors.primary}4D`,
+  };
+}
 
 
 // ============================================
@@ -1432,12 +1448,13 @@ export const SCROLL_DIRECTION_NAMES: Record<ScrollDirection, string> = {
 };
 
 /** 显示模式 */
-export type PhotoWallDisplayMode = 'global' | 'celebration';
+export type PhotoWallDisplayMode = 'global' | 'celebration' | 'after-countdown';
 
 /** 显示模式名称映射 */
 export const PHOTO_WALL_DISPLAY_MODE_NAMES: Record<PhotoWallDisplayMode, string> = {
   global: '全局显示',
   celebration: '仅庆祝时显示',
+  'after-countdown': '倒计时结束后显示',
 };
 
 /** 背景模式 */

@@ -210,6 +210,10 @@ interface AppState {
   setWallPhotoSelection: (photoIds: string[]) => void;
   selectAllWallPhotos: () => void;
   clearWallPhotoSelection: () => void;
+  
+  // Demo 模式（隐藏按钮）
+  isDemoMode: boolean;
+  toggleDemoMode: () => void;
 }
 
 // ============================================
@@ -797,6 +801,12 @@ export const useAppStore = create<AppState>()(
             selectedPhotoIds: [],
           },
         }));
+      },
+      
+      // ========== Demo 模式 ==========
+      isDemoMode: false,
+      toggleDemoMode: () => {
+        set((state) => ({ isDemoMode: !state.isDemoMode }));
       },
     }),
     {

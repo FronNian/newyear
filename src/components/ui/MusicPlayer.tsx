@@ -30,6 +30,10 @@ export default function MusicPlayer() {
   const playMode = useMusicPlayMode();
   const lyricsPosition = useLyricsPosition();
   const setMusicPlayMode = useAppStore((state) => state.setMusicPlayMode);
+  const storePlaylist = useAppStore((state) => state.playlist);
+  const setStorePlaylist = useAppStore((state) => state.setPlaylist);
+  const storeIsPlaying = useAppStore((state) => state.isPlaying);
+  const setStoreIsPlaying = useAppStore((state) => state.setIsPlaying);
   
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,6 +50,38 @@ export default function MusicPlayer() {
   const toastTimeoutRef = useRef<number | null>(null);
   const userScrollingRef = useRef<boolean>(false);
   const scrollTimeoutRef = useRef<number | null>(null);
+
+  // 同步播放列表到 store（供设置面板使用）
+  useEffect(() => {
+    if (storePlaylist.length === 0 && playlist.length > 0) {
+      setStorePlaylist(playlist);
+    }
+  }, [playlist, storePlaylist.length, setStorePlaylist]);
+
+  // 监听 store 的播放请求（从其他组件触发播放）
+  const hasTriggeredPlayRef = useRef(false);
+  useEffect(() => {
+    // 只在 storeIsPlaying 变为 true 且还没触发过时执行
+    if (storeIsPlaying && !hasTriggeredPlayRef.current) {
+      hasTriggeredPlayRef.current = true;
+      
+      // 如果当前没在播放，开始播放
+      if (!isPlaying) {
+        if (currentSong) {
+          musicService.play();
+        } else if (playlist.length > 0) {
+          musicService.load(playlist[0]).then(() => {
+            musicService.play();
+          });
+        }
+      }
+    }
+    
+    // 当 storeIsPlaying 变为 false 时，重置标记
+    if (!storeIsPlaying) {
+      hasTriggeredPlayRef.current = false;
+    }
+  }, [storeIsPlaying, isPlaying, currentSong, playlist]);
 
   // 同步播放模式到服务
   useEffect(() => {
@@ -68,6 +104,7 @@ export default function MusicPlayer() {
           break;
         case 'play':
           setIsPlaying(true);
+          setStoreIsPlaying(true);
           // 延迟连接音频分析器，确保 Howler 内部 audio element 已就绪
           setTimeout(() => {
             const audioEl = musicService.getAudioElement();
@@ -79,9 +116,11 @@ export default function MusicPlayer() {
         case 'pause':
         case 'stop':
           setIsPlaying(false);
+          setStoreIsPlaying(false);
           break;
         case 'end':
           setIsPlaying(false);
+          setStoreIsPlaying(false);
           handleNext();
           break;
         case 'timeupdate':
@@ -239,9 +278,9 @@ export default function MusicPlayer() {
         </div>
       )}
       
-      {/* 屏幕中央歌词显示 */}
+      {/* 屏幕中央歌词显示 - 放在开始倒计时按钮下方 */}
       {lyricsPosition === 'center' && isPlaying && currentLyricText && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+        <div className="fixed bottom-52 sm:bottom-45 md:bottom-40 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
           <div className="text-center px-8 py-4 bg-black/40 backdrop-blur-sm rounded-2xl max-w-lg">
             <div className="text-white text-xl sm:text-2xl font-medium leading-relaxed">
               {currentLyricText}

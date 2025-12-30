@@ -249,6 +249,12 @@ function SceneContent() {
       if (targetSong) {
         setCurrentSong(targetSong);
       }
+    } else if (playlist.length > 0) {
+      // 如果没有配置特定音乐，但当前没有选中歌曲，选择第一首
+      const currentSong = useAppStore.getState().currentSong;
+      if (!currentSong) {
+        setCurrentSong(playlist[0]);
+      }
     }
     // 开始播放
     setIsPlaying(true);
@@ -360,9 +366,9 @@ function SceneContent() {
       {/* 故事线播放器 - 使用新的隧道模式 */}
       {isStorylineMode && <TunnelPlayer />}
       
-      {/* 粒子图形 - 手动倒计时、庆祝和故事线模式时隐藏 */}
-      {!hideMainElements && !isStorylineMode && (
-        <>
+      {/* 粒子图形 - 手动倒计时和故事线模式时隐藏，庆祝时保持渲染但降低可见度 */}
+      {!isManualCountdownActive && !isStorylineMode && (
+        <group visible={!celebrationState.isActive}>
           <ParticleTree
             particleCount={settings.particleCount}
             particleShape={settings.particleShape}
@@ -373,7 +379,7 @@ function SceneContent() {
           {photos.length > 0 && (
             <PhotoOrnaments photoPaths={photos.map(p => p.url)} />
           )}
-        </>
+        </group>
       )}
       
       {/* 普通倒计时显示 - 非手动倒计时、非庆祝和非故事线模式时显示 */}
@@ -387,6 +393,7 @@ function SceneContent() {
           text={manualCountdownText}
           colorTheme={settings.colorTheme}
           particleCount={settings.countdownParticleCount}
+          particleSize={settings.countdownParticleSize}
           position={[0, 0, 1]}
           scale={2.5}
         />
