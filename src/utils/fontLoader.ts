@@ -1,88 +1,77 @@
 /**
  * 共享字体加载工具
- * 多 CDN 备用，自动故障转移
+ * 使用 fontsource CDN，支持可变字体
  */
 
-// 字体 CDN 源列表（按优先级排序）- 使用完整字体文件
+// 字体 CDN 源列表（fontsource 官方 CDN）
 const FONT_SOURCES = [
   {
-    name: 'npmmirror',
-    // npmmirror 国内镜像，完整字体
-    url: 'https://registry.npmmirror.com/@aspect-build/aspect-fonts/0.0.1/files/fonts/noto-sans-sc/NotoSansSC-Bold.woff2',
+    name: 'fontsource-chinese',
+    // 中文字符集
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc:vf@latest/chinese-simplified-wght-normal.woff2',
   },
   {
-    name: 'jsDelivr',
-    url: 'https://cdn.jsdelivr.net/npm/@aspect-build/aspect-fonts@0.0.1/fonts/noto-sans-sc/NotoSansSC-Bold.woff2',
-  },
-  {
-    name: 'unpkg',
-    url: 'https://unpkg.com/@aspect-build/aspect-fonts@0.0.1/fonts/noto-sans-sc/NotoSansSC-Bold.woff2',
+    name: 'fontsource-latin',
+    // 拉丁字符（数字、英文）
+    url: 'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc:vf@latest/latin-wght-normal.woff2',
   },
 ];
 
 // 字体加载状态
 let fontLoaded = false;
 let fontLoadPromise: Promise<void> | null = null;
-let loadedFontName: string | null = null;
 
 /**
- * 尝试从单个源加载字体
+ * 加载字体
  */
-async function tryLoadFont(source: typeof FONT_SOURCES[0]): Promise<boolean> {
+async function loadFontFromSource(url: string, name: string): Promise<boolean> {
   try {
     const fontFace = new FontFace(
       'Noto Sans SC',
-      `url(${source.url})`,
-      { weight: '700', display: 'swap' }
+      `url(${url})`,
+      { 
+        weight: '100 900',  // 可变字体
+        style: 'normal',
+        display: 'swap' 
+      }
     );
     
-    // 设置超时 8 秒
+    // 设置超时 10 秒
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('timeout')), 8000);
+      setTimeout(() => reject(new Error('timeout')), 10000);
     });
     
     await Promise.race([fontFace.load(), timeoutPromise]);
     document.fonts.add(fontFace);
-    
-    // 验证字体是否真正可用（测试渲染数字和中文）
-    await document.fonts.ready;
-    const testChars = '0123456789新年快乐';
-    const isValid = document.fonts.check(`700 16px "Noto Sans SC"`, testChars);
-    
-    if (!isValid) {
-      console.warn(`[FontLoader] ${source.name} 字体加载但验证失败`);
-      return false;
-    }
-    
-    console.log(`[FontLoader] 字体加载成功: ${source.name}`);
-    loadedFontName = source.name;
+    console.log(`[FontLoader] 字体加载成功: ${name}`);
     return true;
   } catch (error) {
-    console.warn(`[FontLoader] ${source.name} 加载失败:`, error);
+    console.warn(`[FontLoader] ${name} 加载失败:`, error);
     return false;
   }
 }
 
 /**
  * 确保字体已加载
- * 使用单例模式，多 CDN 故障转移
  */
 export async function ensureFontLoaded(): Promise<void> {
   if (fontLoaded) return;
   
   if (!fontLoadPromise) {
     fontLoadPromise = (async () => {
-      // 依次尝试各个 CDN 源
-      for (const source of FONT_SOURCES) {
-        const success = await tryLoadFont(source);
-        if (success) {
-          fontLoaded = true;
-          return;
-        }
+      // 并行加载中文和拉丁字符集
+      const results = await Promise.allSettled(
+        FONT_SOURCES.map(source => loadFontFromSource(source.url, source.name))
+      );
+      
+      const anySuccess = results.some(r => r.status === 'fulfilled' && r.value);
+      
+      if (anySuccess) {
+        console.log('[FontLoader] Noto Sans SC 字体加载完成');
+      } else {
+        console.warn('[FontLoader] 字体加载失败，使用系统字体');
       }
       
-      // 所有源都失败，使用系统字体
-      console.warn('[FontLoader] 所有 CDN 源加载失败，使用系统字体');
       fontLoaded = true;
     })();
   }
@@ -95,13 +84,6 @@ export async function ensureFontLoaded(): Promise<void> {
  */
 export function isFontLoaded(): boolean {
   return fontLoaded;
-}
-
-/**
- * 获取已加载的字体源名称
- */
-export function getLoadedFontSource(): string | null {
-  return loadedFontName;
 }
 
 /**
