@@ -21,7 +21,13 @@ export default defineConfig({
     compression({
       algorithm: 'gzip',
       ext: '.gz',
-      threshold: 10240, // 大于 10kb 的文件才压缩
+      threshold: 1024, // 大于 1kb 的文件就压缩
+    }),
+    // Brotli 压缩（比 gzip 更高压缩率）
+    compression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 1024,
     }),
     obfuscatorPlugin({
       apply: 'build', // 只在生产构建时启用
@@ -94,12 +100,24 @@ export default defineConfig({
     https: {},
   },
   build: {
-    // 分包优化
+    // 分包优化 - 更细粒度的代码分割
     rollupOptions: {
       output: {
         manualChunks: {
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
+          // Three.js 核心
+          'three-core': ['three'],
+          // React Three 生态
+          'three-react': ['@react-three/fiber', '@react-three/drei'],
+          // 后处理效果
+          'three-postprocessing': ['@react-three/postprocessing', 'postprocessing'],
+          // React 核心
           'react-vendor': ['react', 'react-dom'],
+          // 状态管理
+          'zustand': ['zustand'],
+          // 音频
+          'audio': ['howler'],
+          // MediaPipe 手势识别
+          'mediapipe': ['@mediapipe/tasks-vision'],
         },
       },
     },
@@ -107,5 +125,15 @@ export default defineConfig({
     reportCompressedSize: true,
     // 资源内联阈值（小于 4kb 的资源内联）
     assetsInlineLimit: 4096,
+    // 目标浏览器
+    target: 'es2020',
+    // 压缩选项
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
   },
 })
