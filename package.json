@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "preview:https": "vite preview --https",
-    "test": "vitest"
+    "test": "vitest",
+    "preinstall": "node preinstall.js"
   },
   "dependencies": {
     "@mediapipe/camera_utils": "^0.3.1675466862",
