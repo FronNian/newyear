@@ -38,7 +38,9 @@ export default function GestureIndicator({ debugMode = false }: GestureIndicator
     if (selectedPhotoId) {
       setSelectedPhotoId(null);
     } else if (photos.length > 0) {
-      setSelectedPhotoId(photos[0].id);
+      // 随机选择一张照片
+      const randomIndex = Math.floor(Math.random() * photos.length);
+      setSelectedPhotoId(photos[randomIndex].id);
     }
   }, [photos, selectedPhotoId, setSelectedPhotoId]);
   
