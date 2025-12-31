@@ -65,8 +65,8 @@ export default function CountdownDisplay() {
         scale={getParticleScale()}
       />
       {!countdown.isLastTenSeconds && !countdown.isFinished && (
-        <Billboard follow={true} position={[0, -2.0, 0]}>
-          <Text fontSize={0.2} color={themeColors.accent} anchorX="center" anchorY="middle">
+        <Billboard follow={true} position={[0, -2.5, 2]}>
+          <Text fontSize={0.22} color={themeColors.accent} anchorX="center" anchorY="middle">
             距 {settings.targetYear} 年还有
           </Text>
         </Billboard>

@@ -31,7 +31,7 @@ function ClickCatcher() {
       onClick={() => setSelectedPhotoId(null)}
     >
       <planeGeometry args={[200, 200]} />
-      <meshBasicMaterial transparent opacity={0} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
     </mesh>
   );
 }
@@ -76,7 +76,7 @@ function CameraMovementDetector() {
 }
 
 // 默认相机位置和朝向
-const DEFAULT_CAMERA_POSITION = { x: 0, y: 0, z: 10 };
+const DEFAULT_CAMERA_POSITION = { x: 0, y: 0, z: 12 };
 const DEFAULT_CAMERA_TARGET = { x: 0, y: 0, z: 0 };
 
 // 支持手势控制的 OrbitControls
@@ -460,7 +460,7 @@ export default function Scene() {
   return (
     <>
       <Canvas
-        camera={{ position: [0, 0, 10], fov: 50 }}
+        camera={{ position: [0, 0, 12], fov: 80 }}
         gl={{
           antialias: renderSettings.antialias,
           alpha: true,

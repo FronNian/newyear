@@ -87,18 +87,25 @@ const generateTargetPosition = (
     case 'cake': {
       const layerRand = seededRandom(index * 6);
       let y: number, rad: number;
-      if (layerRand < 0.4) {
-        y = -height / 2 + seededRandom(index * 6 + 1) * height * 0.2;
-        rad = radius * (0.5 + seededRandom(index * 6 + 2) * 0.5);
-      } else if (layerRand < 0.7) {
-        y = -height / 4 + seededRandom(index * 6 + 1) * height * 0.2;
-        rad = radius * (0.4 + seededRandom(index * 6 + 2) * 0.4);
-      } else if (layerRand < 0.9) {
-        y = seededRandom(index * 6 + 1) * height * 0.15;
-        rad = radius * (0.3 + seededRandom(index * 6 + 2) * 0.3);
+      // 蛋糕分三层：底层(最大)、中层、顶层(最小) + 蜡烛
+      // 整体向上偏移，避免照片在底部
+      const baseOffset = -height * 0.1; // 基础偏移
+      if (layerRand < 0.35) {
+        // 底层 - 最大的一层
+        y = baseOffset + seededRandom(index * 6 + 1) * height * 0.2;
+        rad = radius * (0.8 + seededRandom(index * 6 + 2) * 0.4);
+      } else if (layerRand < 0.65) {
+        // 中层 - 中等大小
+        y = baseOffset + height * 0.2 + seededRandom(index * 6 + 1) * height * 0.2;
+        rad = radius * (0.5 + seededRandom(index * 6 + 2) * 0.3);
+      } else if (layerRand < 0.85) {
+        // 顶层 - 较小
+        y = baseOffset + height * 0.4 + seededRandom(index * 6 + 1) * height * 0.15;
+        rad = radius * (0.3 + seededRandom(index * 6 + 2) * 0.2);
       } else {
-        y = height * 0.2 + seededRandom(index * 6 + 1) * height * 0.3;
-        rad = seededRandom(index * 6 + 2) * radius * 0.2;
+        // 蜡烛 - 顶部细长区域
+        y = baseOffset + height * 0.55 + seededRandom(index * 6 + 1) * height * 0.2;
+        rad = seededRandom(index * 6 + 2) * radius * 0.15;
       }
       const angle = seededRandom(index * 6 + 3) * Math.PI * 2;
       return new THREE.Vector3(Math.cos(angle) * rad, y, Math.sin(angle) * rad);

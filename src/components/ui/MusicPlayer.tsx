@@ -59,14 +59,20 @@ export default function MusicPlayer() {
   }, [playlist, storePlaylist.length, setStorePlaylist]);
 
   // 监听 store 的播放请求（从其他组件触发播放）
+  // 这个 effect 只处理外部组件（如倒计时）触发的播放请求
   const hasTriggeredPlayRef = useRef(false);
+  const isAutoPlayingNextRef = useRef(false); // 标记是否正在自动播放下一首
+  
   useEffect(() => {
+    // 如果正在自动播放下一首，跳过此逻辑
+    if (isAutoPlayingNextRef.current) return;
+    
     // 只在 storeIsPlaying 变为 true 且还没触发过时执行
     if (storeIsPlaying && !hasTriggeredPlayRef.current) {
       hasTriggeredPlayRef.current = true;
       
-      // 如果当前没在播放，开始播放
-      if (!isPlaying) {
+      // 如果当前没在播放，且 musicService 也没在播放，才开始播放
+      if (!isPlaying && !musicService.getIsPlaying()) {
         if (currentSong) {
           musicService.play();
         } else if (playlist.length > 0) {
@@ -120,8 +126,20 @@ export default function MusicPlayer() {
           break;
         case 'end':
           setIsPlaying(false);
-          setStoreIsPlaying(false);
-          handleNext();
+          // 自动播放下一首
+          isAutoPlayingNextRef.current = true;
+          const nextSong = musicService.getNextSong();
+          if (nextSong) {
+            musicService.load(nextSong).then(() => {
+              musicService.play();
+              isAutoPlayingNextRef.current = false;
+            }).catch(() => {
+              isAutoPlayingNextRef.current = false;
+            });
+          } else {
+            setStoreIsPlaying(false);
+            isAutoPlayingNextRef.current = false;
+          }
           break;
         case 'timeupdate':
           setCurrentTime(data as number);
@@ -146,7 +164,7 @@ export default function MusicPlayer() {
         clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [playlist]);
+  }, [playlist, setStoreIsPlaying]);
   
   // 更新音量
   useEffect(() => {
