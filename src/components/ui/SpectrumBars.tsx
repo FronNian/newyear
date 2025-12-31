@@ -115,7 +115,7 @@ function drawIdleBars(
   settings: ReturnType<typeof useSpectrumSettings>,
   chromaticSettings: ReturnType<typeof useChromaticSettings>
 ) {
-  const { barCount, gap, borderRadius, position } = settings;
+  const { barCount, barColor, gap, borderRadius, position } = settings;
   const isVertical = position === 'left' || position === 'right';
   
   const width = canvas.width / (window.devicePixelRatio || 1);
@@ -133,7 +133,9 @@ function drawIdleBars(
   // 色差效果：空闲时使用微小偏移，保持紧贴
   const chromaticEnabled = chromaticSettings.enabled && chromaticSettings.intensity > 0;
   const baseOffset = chromaticEnabled ? (chromaticSettings.intensity / 100) * 1 : 0;
-  const { colors } = chromaticSettings;
+  
+  // 基于用户设置的颜色生成色差效果颜色
+  const chromaticColors = chromaticEnabled ? generateChromaticColors(barColor) : null;
 
   for (let i = 0; i < barCount; i++) {
     const barHeight = 3 + Math.sin(i * 0.3) * 2; // 微小波动
@@ -142,36 +144,36 @@ function drawIdleBars(
       const x = position === 'left' ? 0 : width - barHeight;
       const y = i * (barWidth + gap);
       
-      if (chromaticEnabled && baseOffset > 0.5) {
+      if (chromaticEnabled && baseOffset > 0.5 && chromaticColors) {
         // 绘制RGB分离效果
         ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = colors.red;
+        ctx.fillStyle = chromaticColors.red;
         roundRect(ctx, x - baseOffset, y, barHeight, barWidth, borderRadius);
-        ctx.fillStyle = colors.green;
+        ctx.fillStyle = chromaticColors.main;
         roundRect(ctx, x, y, barHeight, barWidth, borderRadius);
-        ctx.fillStyle = colors.blue;
+        ctx.fillStyle = chromaticColors.blue;
         roundRect(ctx, x + baseOffset, y, barHeight, barWidth, borderRadius);
         ctx.globalCompositeOperation = 'source-over';
       } else {
-        ctx.fillStyle = settings.barColor;
+        ctx.fillStyle = barColor;
         roundRect(ctx, x, y, barHeight, barWidth, borderRadius);
       }
     } else {
       const x = i * (barWidth + gap);
       const y = height - barHeight;
       
-      if (chromaticEnabled && baseOffset > 0.5) {
+      if (chromaticEnabled && baseOffset > 0.5 && chromaticColors) {
         // 绘制RGB分离效果
         ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = colors.red;
+        ctx.fillStyle = chromaticColors.red;
         roundRect(ctx, x - baseOffset, y, barWidth, barHeight, borderRadius);
-        ctx.fillStyle = colors.green;
+        ctx.fillStyle = chromaticColors.main;
         roundRect(ctx, x, y, barWidth, barHeight, borderRadius);
-        ctx.fillStyle = colors.blue;
+        ctx.fillStyle = chromaticColors.blue;
         roundRect(ctx, x + baseOffset, y, barWidth, barHeight, borderRadius);
         ctx.globalCompositeOperation = 'source-over';
       } else {
-        ctx.fillStyle = settings.barColor;
+        ctx.fillStyle = barColor;
         roundRect(ctx, x, y, barWidth, barHeight, borderRadius);
       }
     }
@@ -221,7 +223,10 @@ function drawSpectrumBars(
   // 最大偏移 2-3 像素，让三色紧贴
   const maxOffset = (chromaticSettings.intensity / 100) * 3;
   const chromaticOffset = chromaticEnabled ? normalizedBass * maxOffset + 0.5 : 0;
-  const { colors } = chromaticSettings;
+  
+  // 基于用户设置的颜色生成色差效果颜色
+  const baseColor = barColor;
+  const chromaticColors = chromaticEnabled ? generateChromaticColors(baseColor) : null;
 
   // 创建渐变（仅在非色差模式下使用）
   let gradient: CanvasGradient | null = null;
@@ -247,20 +252,20 @@ function drawSpectrumBars(
       const x = position === 'left' ? 0 : width - barHeight;
       const y = i * (barWidth + gap);
       
-      if (chromaticEnabled && dynamicOffset > 0.5) {
+      if (chromaticEnabled && dynamicOffset > 0.5 && chromaticColors) {
         // RGB分离效果 - 使用 lighter 混合模式产生颜色叠加
         ctx.globalCompositeOperation = 'lighter';
         
         // 红色通道 - 向左偏移
-        ctx.fillStyle = colors.red;
+        ctx.fillStyle = chromaticColors.red;
         roundRect(ctx, x - dynamicOffset, y - dynamicOffset * 0.3, barHeight, barWidth, borderRadius);
         
-        // 白/绿色通道 - 中心
-        ctx.fillStyle = colors.green;
+        // 主色通道 - 中心
+        ctx.fillStyle = chromaticColors.main;
         roundRect(ctx, x, y, barHeight, barWidth, borderRadius);
         
         // 蓝色通道 - 向右偏移
-        ctx.fillStyle = colors.blue;
+        ctx.fillStyle = chromaticColors.blue;
         roundRect(ctx, x + dynamicOffset, y + dynamicOffset * 0.3, barHeight, barWidth, borderRadius);
         
         ctx.globalCompositeOperation = 'source-over';
@@ -272,20 +277,20 @@ function drawSpectrumBars(
       const x = i * (barWidth + gap);
       const y = height - barHeight;
       
-      if (chromaticEnabled && dynamicOffset > 0.5) {
+      if (chromaticEnabled && dynamicOffset > 0.5 && chromaticColors) {
         // RGB分离效果 - 水平方向的撕裂
         ctx.globalCompositeOperation = 'lighter';
         
         // 红色通道 - 向左偏移
-        ctx.fillStyle = colors.red;
+        ctx.fillStyle = chromaticColors.red;
         roundRect(ctx, x - dynamicOffset, y, barWidth, barHeight, borderRadius);
         
-        // 白/绿色通道 - 中心
-        ctx.fillStyle = colors.green;
+        // 主色通道 - 中心
+        ctx.fillStyle = chromaticColors.main;
         roundRect(ctx, x, y, barWidth, barHeight, borderRadius);
         
         // 蓝色通道 - 向右偏移
-        ctx.fillStyle = colors.blue;
+        ctx.fillStyle = chromaticColors.blue;
         roundRect(ctx, x + dynamicOffset, y, barWidth, barHeight, borderRadius);
         
         ctx.globalCompositeOperation = 'source-over';
@@ -295,6 +300,36 @@ function drawSpectrumBars(
       }
     }
   }
+}
+
+// 基于基础颜色生成色差效果的三个颜色
+function generateChromaticColors(baseColor: string): { red: string; main: string; blue: string } {
+  // 解析颜色
+  const hex = baseColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // 生成偏红色版本（增加红色，减少蓝色）
+  const redR = Math.min(255, r + 60);
+  const redG = Math.max(0, g - 30);
+  const redB = Math.max(0, b - 60);
+  
+  // 生成偏蓝色版本（增加蓝色，减少红色）
+  const blueR = Math.max(0, r - 60);
+  const blueG = Math.max(0, g - 30);
+  const blueB = Math.min(255, b + 60);
+  
+  // 主色稍微降低亮度，让叠加效果更明显
+  const mainR = Math.floor(r * 0.7);
+  const mainG = Math.floor(g * 0.7);
+  const mainB = Math.floor(b * 0.7);
+  
+  return {
+    red: `rgb(${redR}, ${redG}, ${redB})`,
+    main: `rgb(${mainR}, ${mainG}, ${mainB})`,
+    blue: `rgb(${blueR}, ${blueG}, ${blueB})`,
+  };
 }
 
 
@@ -330,7 +365,9 @@ function drawCircularBars(
   // 角度偏移很小，让三色紧贴
   const maxAngleOffset = (chromaticSettings.intensity / 100) * 0.015;
   const chromaticAngleOffset = chromaticEnabled ? normalizedBass * maxAngleOffset + 0.002 : 0;
-  const { colors } = chromaticSettings;
+  
+  // 基于用户设置的颜色生成色差效果颜色
+  const chromaticColors = chromaticEnabled ? generateChromaticColors(barColor) : null;
 
   for (let i = 0; i < barCount; i++) {
     const angle = (i / barCount) * Math.PI * 2 - Math.PI / 2;
@@ -346,20 +383,20 @@ function drawCircularBars(
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
 
-    if (chromaticEnabled && chromaticAngleOffset > 0.001) {
+    if (chromaticEnabled && chromaticAngleOffset > 0.001 && chromaticColors) {
       // RGB分离效果 - 微小角度偏移，三色紧贴
       ctx.globalCompositeOperation = 'lighter';
       
       // 红色通道 - 逆时针微小偏移
       const angleR = angle - chromaticAngleOffset;
-      ctx.strokeStyle = colors.red;
+      ctx.strokeStyle = chromaticColors.red;
       ctx.beginPath();
       ctx.moveTo(centerX + Math.cos(angleR) * radius, centerY + Math.sin(angleR) * radius);
       ctx.lineTo(centerX + Math.cos(angleR) * (radius + barLength), centerY + Math.sin(angleR) * (radius + barLength));
       ctx.stroke();
       
-      // 白/绿色通道 - 中心
-      ctx.strokeStyle = colors.green;
+      // 主色通道 - 中心
+      ctx.strokeStyle = chromaticColors.main;
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
@@ -367,7 +404,7 @@ function drawCircularBars(
       
       // 蓝色通道 - 顺时针微小偏移
       const angleB = angle + chromaticAngleOffset;
-      ctx.strokeStyle = colors.blue;
+      ctx.strokeStyle = chromaticColors.blue;
       ctx.beginPath();
       ctx.moveTo(centerX + Math.cos(angleB) * radius, centerY + Math.sin(angleB) * radius);
       ctx.lineTo(centerX + Math.cos(angleB) * (radius + barLength), centerY + Math.sin(angleB) * (radius + barLength));
